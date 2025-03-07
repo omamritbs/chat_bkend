@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine,Integer,Column,String,ForeignKey,Text
+from sqlalchemy import create_engine,Integer,Column,String,ForeignKey,Text,DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker,relationship
+from datetime import datetime
 
 
 
@@ -22,6 +23,7 @@ class UserQuery(Base):
     user_id=Column(Integer,ForeignKey('users.id'),nullable=False)
     query=Column(Text,nullable=False)
     response=Column(Text,nullable=False)
+    timestamp=Column(DateTime,default=datetime.utcnow)#creting date time for each user query
 
     # define relationship
     user=relationship("User",back_populates='queries')

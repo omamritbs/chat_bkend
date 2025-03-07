@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from models import User,UserQuery
+from models import Base,User,UserQuery
 import psycopg2
 
 # define db info
@@ -24,12 +24,11 @@ try:
 except Exception as e:
     print("Error in connection :",e)
 
-# define ORM 
-Base=declarative_base()
-
-
 # create a fatory session(fresh start after each call) using sessionmaker and bind it to db
 SessionLocal=sessionmaker(bind=engine)
+# defined the orm now creating tables
+Base.metadata.create_all(engine)
+print('Table sucessfully created')
 session=SessionLocal()
 
 # Dependency to get DB session
@@ -41,8 +40,6 @@ def get_db():
         db.close()
 
 
-# defined the orm now creating tables
-Base.metadata.create_all(engine)
-print('Table sucessfully created')
+
 
 

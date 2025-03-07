@@ -23,4 +23,4 @@ def get_chat_history(user_id: int):
     db: Session = next(get_db())
     chats = db.query(UserQuery).filter(UserQuery.user_id == user_id).all()#.order_by(UserQuery.id.desc()).all()
     
-    return [{"query": chat.query, "response": chat.response} for chat in chats]
+    return [{"query": chat.query, "response": chat.response,"timestamp":chat.timestamp} for chat in chats]

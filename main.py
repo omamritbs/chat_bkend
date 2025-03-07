@@ -6,6 +6,7 @@ from chat import get_chat_history,save_chat_to_db
 from auth import create_access_token,verify_access_token
 from gemini import ask_gemini
 from models import UserQuery
+from datetime import datetime
 
 
 app=FastAPI()
@@ -74,9 +75,15 @@ def chat(request:ChatRequest,authorization: str = Header(None)):
     chat_entry = save_chat_to_db({
         "user_id": user['id'],
         "query": request.query,
-        "response": response
+        "response": response,
+        "timestamp":datetime.utcnow()
     })
-    return{"user":request.query,"gemini":response}
+    return{"user":request.query,
+           "gemini":response,
+        #    "timestamp": datetime.utcnow().isoformat(),
+            "time":datetime.utcnow().strftime("%I:%M %p, %d %B %Y"),
+            # "full_chat_history": chat_history
+            }
 
 
 @app.get('/chat/history')
@@ -91,9 +98,17 @@ def get_history(authorization: str = Header(None)):
     chat_history=get_chat_history(user['id'])
 
     for chat in chat_history:
-        print(f"Query: {chat['query']}\nResponse: {chat['response']}\n")
+        print(f"Query: {chat['query']}\nResponse: {chat['response']}\n Time:{chat['timestamp']}")
     
-    history_list=[{"query":chat['query'],"response":chat['response']}for chat in chat_history]
+    history_list=[
+         {
+              "query":chat['query'],
+              "response":chat['response'],
+              "timestamp":chat['timestamp'].strftime("%I:%M %p, %d %B %Y")
+                # "timestamp": datetime.strptime(chat['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
+              }
+              for chat in chat_history
+              ]
     return {
          "chat_history":history_list
     }
