@@ -29,17 +29,12 @@ SessionLocal=sessionmaker(bind=engine)
 # defined the orm now creating tables
 Base.metadata.create_all(engine)
 print('Table sucessfully created')
-session=SessionLocal()
+# session=SessionLocal()
 
 # Dependency to get DB session
 def get_db():
-    db = SessionLocal()
+    session = SessionLocal()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
-
-
-
-
-
+        session.close()

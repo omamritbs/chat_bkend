@@ -14,7 +14,6 @@ def user_login(email:str,pwd:str):
     session=SessionLocal()
     try:
         user=session.query(User).filter(User.email==email).first()
-        print("user is ",user.name)
         if not user:
             return {"error": "User not found. Please register first."}
         hashed_password = str(user.password)  # Convert to string if needed

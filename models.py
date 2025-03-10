@@ -21,9 +21,11 @@ class UserQuery(Base):
     __tablename__='user_queries'
     id=Column(Integer,primary_key=True,autoincrement=True)
     user_id=Column(Integer,ForeignKey('users.id'),nullable=False)
+    # adding session id
+    session_id=Column(String,nullable=False)
     query=Column(Text,nullable=False)
     response=Column(Text,nullable=False)
     timestamp=Column(DateTime,default=datetime.utcnow)#creting date time for each user query
-
+    
     # define relationship
     user=relationship("User",back_populates='queries')

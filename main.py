@@ -1,18 +1,26 @@
-from fastapi import FastAPI, HTTPException,Header
+from fastapi import FastAPI, HTTPException,Header,Depends
 from pydantic import BaseModel
 from register import register_user
 from login import user_login
-from chat import get_chat_history,save_chat_to_db
-from auth import create_access_token,verify_access_token
+from chat import get_chat_history,save_chat_to_db,getSessionChat
+from auth import verify_access_token
 from gemini import ask_gemini
-from models import UserQuery
+# from models import UserQuery
 from datetime import datetime
+from db import get_db,SessionLocal
+import uuid
+from sqlalchemy.orm import Session
+from helper import current_user
 
 
 app=FastAPI()
 
+class sessionRequest(BaseModel):
+     session_id:str
+
 class ChatRequest(BaseModel):
     query: str
+    session_id:str | None=None #can be empty
 
 class RegisterRequest(BaseModel):
     name:str
@@ -46,22 +54,25 @@ def login(data: LoginRequest):
         raise HTTPException(status_code=401, detail=result["error"])
     return result
 
-
+# modify it for chAT with session id
 @app.post("/chat")
-def chat(request:ChatRequest,authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Token required")
-    token = authorization.split(" ")[1]
-    user = verify_access_token(token)
+def chat(
+     request:ChatRequest,
+     user:dict=Depends(current_user),#calling fn from helper which can validate aT and return user info
+     session_id: str = Header(None),
+     db:Session=Depends(get_db)#Calls the get_db() function when the route is accessed,we don't haave to call db manually
+     ):
+    print("session_id ",session_id)
+    if not session_id:
+         session_id=str(uuid.uuid4())
 
-    print("user id is",user)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
     # get last 10 chats
     print("chat history function called.")
-    chat=get_chat_history(user['id'])
-    print('chat history is ',chat)
+    print("session_id is =",session_id)
+    
+    chat=get_chat_history(user['id'],session_id)
+
+    print("chat his is=",chat)
     chat_history=[]
     for q in chat:
         chat_history.append({"role": "user", "parts": [{"text": q['query']}]})
@@ -69,50 +80,88 @@ def chat(request:ChatRequest,authorization: str = Header(None)):
     
     # add new question
     chat_history.append({"role": "user", "parts": [{"text": request.query}]})
-
+    print('chat history')
     response = ask_gemini(chat_history)  
-
+    print("gemini response is ",response)
+    
     chat_entry = save_chat_to_db({
         "user_id": user['id'],
+        "session_id":session_id,
         "query": request.query,
         "response": response,
         "timestamp":datetime.utcnow()
     })
-    return{"user":request.query,
-           "gemini":response,
-        #    "timestamp": datetime.utcnow().isoformat(),
-            "time":datetime.utcnow().strftime("%I:%M %p, %d %B %Y"),
-            # "full_chat_history": chat_history
+
+    return{
+        "session_id":session_id,
+        "user":request.query,
+        "gemini":response,
+        # "timestamp": datetime.utcnow().isoformat(),
+        "time":datetime.utcnow().strftime("%I:%M %p, %d %B %Y"),
+        "full_chat_history": chat_history
             }
 
 
-@app.get('/chat/history')
-def get_history(authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Token required")
-    token = authorization.split(" ")[1]
-    user = verify_access_token(token)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    chat_history=get_chat_history(user['id'])
+# all chat history of user with different sessions
+# @app.get('/chat/history')
+# def get_history(
+#      user:dict=Depends(current_user),
+#     #  session_id:str=Header(None)
+#      ):
+#     chat_history=get_chat_history(user['id'])
 
-    for chat in chat_history:
-        print(f"Query: {chat['query']}\nResponse: {chat['response']}\n Time:{chat['timestamp']}")
+#     for chat in chat_history:
+#         print(f"Query: {chat['query']}\nResponse: {chat['response']}\n Time:{chat['timestamp']}")
     
-    history_list=[
+#     history_list=[
+#          {
+#              "session_id":chat['session_id'],
+#               "query":chat['query'],
+#               "response":chat['response'],
+#               "timestamp":chat['timestamp'].strftime("%I:%M %p, %d %B %Y")
+#                 # "timestamp": datetime.strptime(chat['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
+#               }
+#               for chat in chat_history
+#               ]
+#     return {
+#          "chat_history":history_list
+#     }
+
+@app.get('/chat/history')
+def get_history(user: dict = Depends(current_user)):
+    chat_history = get_chat_history(user['id'])
+
+    
+    # for session in chat_history:
+    #     print(f"Session ID: {session['session_id']}")
+    #     for chat in session['chats']:
+    #         print(f"Query: {chat['query']}\nResponse: {chat['response']}\nTime: {chat['timestamp']}")
+    
+    return {"chat_history": chat_history}
+         
+         
+# api call for session (take user access token and show session) so that user can see its session
+@app.get("/chat/history/session")
+def user_session(
+     session_id:str=Header(None),
+     user:dict=Depends(current_user),
+     db:Session=Depends(get_db)):
+
+     chat_history=getSessionChat(user['id'],session_id)
+     
+     print("chat history is ",chat_history)
+     history_list=[
          {
               "query":chat['query'],
               "response":chat['response'],
               "timestamp":chat['timestamp'].strftime("%I:%M %p, %d %B %Y")
-                # "timestamp": datetime.strptime(chat['timestamp'], "%Y-%m-%dT%H:%M:%S.%f")
+            
               }
               for chat in chat_history
               ]
-    return {
+     return {
          "chat_history":history_list
-    }
-         
-         
-
-
+        }
+    
+     
+     

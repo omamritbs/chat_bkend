@@ -66,8 +66,27 @@
 
 # TypeError: argument of type 'NoneType' is not iterable
 
-a={'id': 3, 'name': 'rahul', 'email': 'rahul@gmail.com'}
-print(a['name'])
-# print(a.name)
-a.append({'name':'om'})
+
+
+from datetime import datetime
+
+# Given timestamp
+timestamp_str = "2025-03-07T06:58:08.789026"
+
+# Convert string to datetime object
+timestamp_obj = datetime.fromisoformat(timestamp_str)
+# print(timestamp_obj)
+
+# Format to desired output: "12:30, 7 March 2025"
+formatted_time = timestamp_obj.strftime("%I:%M %p, %d %B %Y")
+
+# print(formatted_time) 
+a=datetime.utcnow()
+b=a.isoformat()
+c=datetime.fromisoformat(b)
+d = c.strftime("%I:%M %p, %d %B %Y")
+
+# print(d)
+import uuid
+a=str(uuid.uuid4())
 print(a)
